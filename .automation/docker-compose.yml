@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: .automation/Dockerfile
+    image: mobile-clone/orchestrator:latest
+    container_name: mobile-clone-orchestrator
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+      - orchestrator-cache:/home/automation/.cache
+    environment:
+      - AUTOMATION_CONFIG=.automation/config.yaml
+      - PYTHONUNBUFFERED=1
+    tty: true
+
+  mitmproxy:
+    image: mitmproxy/mitmproxy:10.2.4
+    container_name: mobile-clone-mitmproxy
+    command: mitmweb --web-port 8081 --mode regular --listen-host 0.0.0.0
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - ./captures:/home/mitmproxy/.mitmproxy
+
+volumes:
+  orchestrator-cache:

@@ -1,0 +1,23 @@
+defaults:
+  artifact_root: captures
+  report_root: reports
+  backend_endpoint: http://backend-clone:4000
+  ios:
+    bundle_id: com.example.app
+    simulator:
+      device: iPhone 15 Pro
+      os: "17.4"
+    remote_runner:
+      host: ${IOS_REMOTE_HOST:-}
+      user: ${IOS_REMOTE_USER:-}
+      identity_file: ${IOS_REMOTE_IDENTITY:-}
+  android:
+    application_id: com.example.app
+    emulator:
+      avd: Pixel_7_Pro_API_34
+    remote_runner:
+      host: ${ANDROID_REMOTE_HOST:-}
+      user: ${ANDROID_REMOTE_USER:-}
+      identity_file: ${ANDROID_REMOTE_IDENTITY:-}
+notifications:
+  webhook: ${AUTOMATION_WEBHOOK:-}

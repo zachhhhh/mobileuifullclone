@@ -1,0 +1,8 @@
+{
+  "name": "mobile-clone-automation",
+  "private": true,
+  "workspaces": [
+    "ios",
+    "android"
+  ]
+}

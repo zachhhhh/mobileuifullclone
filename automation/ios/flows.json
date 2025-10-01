@@ -1,0 +1,8 @@
+[
+  {
+    "name": "launch",
+    "steps": [
+      { "action": "sleep", "ms": 3000 }
+    ]
+  }
+]

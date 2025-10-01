@@ -1,0 +1,8 @@
+{
+  "name": "mobile-clone-automation-ios",
+  "version": "0.0.1",
+  "type": "module",
+  "dependencies": {
+    "webdriverio": "8.33.0"
+  }
+}
