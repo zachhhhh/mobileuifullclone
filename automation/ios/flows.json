@@ -1,8 +1,22 @@
 [
   {
     "name": "launch",
+    "description": "Wait for the launch/home screen to render",
+    "screenshot": "launch-home",
     "steps": [
-      { "action": "sleep", "ms": 3000 }
+      { "action": "sleep", "ms": 3000, "description": "Allow launch animations to complete" }
+    ]
+  },
+  {
+    "name": "login",
+    "description": "Example flow for logging into the app",
+    "screenshot": "login-success",
+    "steps": [
+      { "action": "waitFor", "selector": "~loginEmailField", "timeout": 15000, "description": "Ensure login form is visible" },
+      { "action": "input", "selector": "~loginEmailField", "value": "user@example.com", "description": "Enter email" },
+      { "action": "input", "selector": "~loginPasswordField", "value": "password123", "description": "Enter password" },
+      { "action": "tap", "selector": "~loginSubmitButton", "description": "Submit credentials" },
+      { "action": "waitFor", "selector": "~homeTimeline", "timeout": 20000, "description": "Wait for home timeline to appear" }
     ]
   }
 ]

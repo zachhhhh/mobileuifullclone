@@ -1,0 +1,35 @@
+name: Clone Release Pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  capture-and-build:
+    runs-on: ubuntu-latest
+    env:
+      AUTONOMATION_BACKEND_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend dependencies
+        run: npm install
+        working-directory: backend
+      - name: Run automation pipeline (requires remote simulators)
+        run: |
+          docker compose -f .automation/docker-compose.yml run --rm orchestrator \
+            python3 automation/shared/run_pipeline.py ios captures/ios/binaries/latest.ipa || true
+      - name: Generate release report
+        run: python3 automation/shared/release_report.py both
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clone-release-reports
+          path: |
+            reports/
+            docs/release-summary.json
+            docs/release-diff.json

@@ -7,7 +7,6 @@ asset extraction, spec generation, backend sync, clone builds, and reporting.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -16,6 +15,8 @@ from pathlib import Path
 import yaml
 from rich.console import Console
 from rich.table import Table
+
+from automation.shared.archive_binary import archive as archive_binary
 
 console = Console()
 
@@ -34,22 +35,6 @@ def run(cmd: list[str], cwd: Path | None = None, env: dict | None = None) -> Non
     completed = subprocess.run(cmd, cwd=cwd, env=env)
     if completed.returncode != 0:
         raise subprocess.CalledProcessError(completed.returncode, cmd)
-
-
-def ingest_binary(platform: str, binary: Path, output_dir: Path) -> Path:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    target = output_dir / binary.name
-    console.log(f"Copying {binary} -> {target}")
-    data = {
-        "platform": platform,
-        "filename": binary.name,
-        "size_bytes": binary.stat().st_size,
-    }
-    target.write_bytes(binary.read_bytes())
-    metadata_path = output_dir / "metadata.json"
-    metadata_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    console.log(f"Wrote metadata {metadata_path}")
-    return target
 
 
 def ios_capture(config: dict, workspace: Path) -> None:
@@ -105,14 +90,60 @@ def main() -> None:
     config_path = workspace / args.config
     config = load_config(config_path)
 
-    captures_root = workspace / config["defaults"]["artifact_root"] / args.platform
-    binary_out = ingest_binary(args.platform, args.binary, captures_root / "binaries")
+    captures_root = workspace / config["defaults"]["artifact_root"]
+    archive_info = archive_binary(
+        platform=args.platform,
+        binary=args.binary,
+        dest_root=captures_root,
+        version=os.getenv("BINARY_VERSION"),
+        release_notes=os.getenv("BINARY_RELEASE_NOTES"),
+    )
+    binary_out = Path(archive_info["stored_path"])
 
     with console.status("Running capture"):
         if args.platform == "ios":
             ios_capture(config, workspace)
         else:
             android_capture(config, workspace)
+
+    summarize_network_cmd = [
+        "python3",
+        "automation/shared/summarize_network.py",
+        args.platform,
+    ]
+    run(summarize_network_cmd, cwd=workspace)
+
+    security_cmd = [
+        "python3",
+        "automation/shared/security_audit.py",
+        args.platform,
+    ]
+    run(security_cmd, cwd=workspace)
+
+    run([
+        "python3",
+        "backend/src/sync_endpoints.py",
+        "--platforms",
+        args.platform,
+    ], cwd=workspace)
+
+    run([
+        "python3",
+        "automation/shared/sync_tokens.py",
+        args.platform,
+    ], cwd=workspace)
+
+    run([
+        "python3",
+        "automation/shared/qa_check.py",
+        args.platform,
+    ], cwd=workspace)
+
+    run([
+        "python3",
+        "automation/shared/release_report.py",
+        args.platform,
+    ], cwd=workspace)
 
     generate_specs(workspace)
     run_backend_sync(workspace)

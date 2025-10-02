@@ -1,0 +1,20 @@
+{
+  "name": "clone-backend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "test": "vitest run",
+    "sync": "python3 src/sync_endpoints.py"
+  },
+  "dependencies": {
+    "cors": "2.8.5",
+    "dotenv": "16.4.5",
+    "express": "4.19.2",
+    "helmet": "7.1.0"
+  },
+  "devDependencies": {
+    "vitest": "1.6.0"
+  }
+}

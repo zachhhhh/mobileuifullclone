@@ -45,11 +45,27 @@ node automation/ios/walkthrough.mjs \
 # Summarise layouts from collected hierarchy dumps
 python3 automation/ios/layout_dump.py \
   --input "$UI_DIR" \
-  --output "$UI_DIR/layout-summary.json"
+  --output "$UI_DIR/layout-summary.json" \
+  --run latest
+
+RUN_ID_FILE="$UI_DIR/latest-run.txt"
+if [[ -f "$RUN_ID_FILE" ]]; then
+  RUN_ID="$(cat "$RUN_ID_FILE" | tr -d '\n' | tr -d '\r')"
+  SUMMARY_PATH="$UI_DIR/$RUN_ID/summary.json"
+  REPORT_DIR="$WORKSPACE_DIR/reports/ios"
+  mkdir -p "$REPORT_DIR"
+  if [[ -f "$SUMMARY_PATH" ]]; then
+    cp "$SUMMARY_PATH" "$REPORT_DIR/ui-run.json"
+  fi
+  if [[ -f "$UI_DIR/layout-summary.json" ]]; then
+    cp "$UI_DIR/layout-summary.json" "$REPORT_DIR/layout-summary.json"
+  fi
+fi
 
 # Extract assets from the IPA bundle
 python3 automation/ios/extract_assets.py \
   --app "$IPA_PATH" \
-  --output "$ASSET_DIR"
+  --output "$ASSET_DIR" \
+  --report "$WORKSPACE_DIR/reports/ios/assets-summary.json"
 
 echo "Capture completed. Artefacts stored under $CAPTURE_ROOT"

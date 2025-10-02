@@ -29,6 +29,8 @@ def collect_files(decoded_dir: Path, output: Path) -> dict:
         "fonts": [],
         "animations": [],
         "xml": [],
+        "strings": [],
+        "databases": [],
         "other": [],
     }
     for file in decoded_dir.rglob("*"):
@@ -45,6 +47,10 @@ def collect_files(decoded_dir: Path, output: Path) -> dict:
             category = "animations"
         elif suffix == ".xml":
             category = "xml"
+        elif suffix in {".json", ".txt"} and "res" in rel.parts:
+            category = "strings"
+        elif suffix in {".db", ".sqlite"}:
+            category = "databases"
 
         dest = output / category / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -56,7 +62,30 @@ def collect_files(decoded_dir: Path, output: Path) -> dict:
     return manifest
 
 
-def extract(app: Path, output: Path) -> None:
+def build_summary(manifest: dict[str, list[dict]]) -> dict:
+    summary = {
+        "categories": {},
+        "totals": {
+            "files": 0,
+            "bytes": 0,
+        },
+    }
+
+    for category, items in manifest.items():
+        count = len(items)
+        size = sum(item["size"] for item in items)
+        summary["categories"][category] = {
+            "count": count,
+            "bytes": size,
+            "examples": [item["path"] for item in items[:5]],
+        }
+        summary["totals"]["files"] += count
+        summary["totals"]["bytes"] += size
+
+    return summary
+
+
+def extract(app: Path, output: Path, report: Path | None = None) -> None:
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True, exist_ok=True)
@@ -67,16 +96,24 @@ def extract(app: Path, output: Path) -> None:
         manifest = collect_files(decoded_dir, output)
         manifest_path = output / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        summary = build_summary(manifest)
+        summary_path = output / "summary.json"
+        summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         console.print(f"Wrote manifest {manifest_path}")
+        if report:
+            report.parent.mkdir(parents=True, exist_ok=True)
+            report.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+            console.print(f"Wrote asset summary {report}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Extract Android package assets")
     parser.add_argument("--app", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--report", help="Optional path to write summary report")
     args = parser.parse_args()
 
-    extract(Path(args.app), Path(args.output))
+    extract(Path(args.app), Path(args.output), Path(args.report) if args.report else None)
 
 
 if __name__ == "__main__":

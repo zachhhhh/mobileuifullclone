@@ -29,22 +29,48 @@ def synthesize_design_tokens(platform: str) -> None:
         return
 
     layout_summary_path = ui_dir / "layout-summary.json"
-    layout_summary = {}
+    layout_payload = {}
     if layout_summary_path.exists():
-        layout_summary = json.loads(layout_summary_path.read_text(encoding="utf-8"))
+        layout_payload = json.loads(layout_summary_path.read_text(encoding="utf-8"))
 
-    screens = {}
-    for screen_dir in sorted(p for p in ui_dir.iterdir() if p.is_dir()):
-        screenshot = screen_dir / "screenshot.png"
-        xml_path = screen_dir / "source.xml"
-        summary = layout_summary.get(screen_dir.name, {})
-        screens[screen_dir.name] = {
-            "screenshot": str(screenshot.relative_to(WORKSPACE)) if screenshot.exists() else None,
-            "hierarchy": str(xml_path.relative_to(WORKSPACE)) if xml_path.exists() else None,
-            "metrics": summary,
-        }
+    metrics_map = layout_payload.get("screens", {}) if isinstance(layout_payload, dict) else {}
 
-    tokens_path.write_text(json.dumps({"screens": screens}, indent=2), encoding="utf-8")
+    run_summary = {}
+    latest_run_file = ui_dir / "latest-run.txt"
+    if latest_run_file.exists():
+        run_id = latest_run_file.read_text(encoding="utf-8").strip()
+        summary_path = ui_dir / run_id / "summary.json"
+        if summary_path.exists():
+            run_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    screens: dict[str, dict] = {}
+    for flow in run_summary.get("flows", []):
+        slug = flow.get("slug") or flow.get("name")
+        if not slug:
+            continue
+        entry = screens.setdefault(slug, {})
+        entry.update(
+            {
+                "name": flow.get("name"),
+                "description": flow.get("description"),
+                "status": flow.get("status"),
+                "screenshot": flow.get("screenshot"),
+                "hierarchy": flow.get("hierarchy"),
+                "directory": flow.get("directory"),
+                "steps": flow.get("steps"),
+            }
+        )
+
+    for slug, metrics in metrics_map.items():
+        entry = screens.setdefault(slug, {})
+        entry["metrics"] = metrics
+
+    tokens_payload = {
+        "run_id": run_summary.get("runId") or layout_payload.get("run_id"),
+        "screens": screens,
+    }
+
+    tokens_path.write_text(json.dumps(tokens_payload, indent=2), encoding="utf-8")
     console.print(f"Wrote design tokens to {tokens_path}")
 
 

@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">CloneApp</string>
+    <string name="backend_url">http://10.0.2.2:4000</string>
+</resources>
