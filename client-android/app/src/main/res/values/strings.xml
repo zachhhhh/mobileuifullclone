@@ -1,4 +1,80 @@
 <resources>
     <string name="app_name">CloneApp</string>
     <string name="backend_url">http://10.0.2.2:4000</string>
+
+    <string name="loading_text">Loading…</string>
+
+    <!-- Sections & Titles -->
+    <string name="screens_title">Screens</string>
+    <string name="section_user">User</string>
+    <string name="section_feed">Feed</string>
+    <string name="section_screens">Screens</string>
+    <string name="section_notifications">Notifications</string>
+    <string name="button_profile_settings">Profile &amp; Settings</string>
+
+    <!-- Buttons & Labels -->
+    <string name="button_logout">Log out</string>
+    <string name="button_unlock_premium">Unlock Premium</string>
+    <string name="button_preview_notification">Preview Notification</string>
+    <string name="button_download">
+        Download for offline
+    </string>
+    <string name="button_remove_download">Remove download</string>
+    <string name="button_mark_complete">Mark complete</string>
+    <string name="button_close">Close</string>
+    <string name="button_continue">Continue</string>
+    <string name="button_retry">Retry</string>
+    <string name="button_save_name">Save name</string>
+    <string name="button_apply">Apply</string>
+    <string name="button_view_details">View details</string>
+
+    <!-- Auth -->
+    <string name="auth_title">Sign in</string>
+    <string name="auth_message">Your session has expired. Please authenticate to continue.</string>
+    <string name="field_email">Email</string>
+    <string name="field_password">Password</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Onboarding</string>
+    <string name="onboarding_step">Current step: %1$s</string>
+
+    <!-- Feed & Content -->
+    <string name="feed_downloaded_badge">Downloaded</string>
+    <string name="feed_card_description">%1$s. %2$s.</string>
+    <string name="feed_card_hint">Double-tap to open session details.</string>
+    <string name="feed_duration">%1$d min</string>
+    <string name="feed_instructor">Instructor: %1$s</string>
+
+    <!-- Player -->
+    <string name="player_back_15">Back 15s</string>
+    <string name="player_forward_15">Forward 15s</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_position_value">%1$d of %2$d seconds</string>
+
+    <!-- Paywall -->
+    <string name="paywall_title">Go Premium</string>
+    <string name="paywall_subtitle">Unlock full library, offline access, and personalized plans.</string>
+    <string name="paywall_best_value">Best Value</string>
+
+    <!-- Notifications -->
+    <string name="notification_preview_title">Notification Preview</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_display_name">Display name</string>
+    <string name="profile_feature_flags">Feature Flags</string>
+    <string name="toggle_paywall">Paywall enabled</string>
+    <string name="toggle_notifications">Notifications enabled</string>
+
+    <!-- Error -->
+    <string name="error_title">Something went wrong</string>
+
+    <!-- Accessibility -->
+    <string name="feed_card_downloaded_hint">Downloaded</string>
+    <string name="user_authenticated">Authenticated</string>
+    <string name="user_guest">Guest</string>
+    <string name="welcome_user">Welcome %1$s</string>
+    <string name="feed_card_status">Status: %1$s</string>
+    <string name="feed_card_accessibility">%1$s. %2$s.</string>
 </resources>
