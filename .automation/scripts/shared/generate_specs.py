@@ -24,6 +24,9 @@ def ensure_dirs() -> None:
 def synthesize_design_tokens(platform: str) -> None:
     ui_dir = CAPTURE_ROOT / platform / "ui"
     tokens_path = DESIGN_ROOT / platform / "tokens.json"
+    if tokens_path.exists():
+        console.print(f"[green]Existing tokens detected at {tokens_path}; skipping auto-generation")
+        return
     if not ui_dir.exists():
         console.print(f"[yellow]{ui_dir} missing; skipping {platform} tokens")
         return

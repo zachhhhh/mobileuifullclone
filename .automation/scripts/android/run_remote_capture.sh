@@ -47,13 +47,15 @@ root = Path(sys.argv[1])
 if not root.exists():
     sys.exit(1)
 
-extensions = {'.apk', '.aab'}
-files = [p for p in root.iterdir() if p.suffix in extensions]
-files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-if not files:
+candidates = []
+for pattern in ('*.apk', '*.aab'):
+    candidates.extend([p for p in root.rglob(pattern) if p.is_file()])
+
+candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+if not candidates:
     sys.exit(1)
 
-print(files[0])
+print(candidates[0])
 PY
 ) || true
 if [[ -z "$APK_PATH" ]]; then

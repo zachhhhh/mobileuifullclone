@@ -9,14 +9,60 @@
   },
   {
     "name": "login",
-    "description": "Example flow for logging into the app",
+    "description": "Authenticate with demo credentials",
     "screenshot": "login-success",
     "steps": [
-      { "action": "waitFor", "selector": "~loginEmailField", "timeout": 15000, "description": "Ensure login form is visible" },
+      { "action": "waitFor", "selector": "~loginEmailField", "timeout": 20000, "description": "Ensure login form is visible" },
       { "action": "input", "selector": "~loginEmailField", "value": "user@example.com", "description": "Enter email" },
       { "action": "input", "selector": "~loginPasswordField", "value": "password123", "description": "Enter password" },
       { "action": "tap", "selector": "~loginSubmitButton", "description": "Submit credentials" },
       { "action": "waitFor", "selector": "~homeTimeline", "timeout": 20000, "description": "Wait for home timeline to appear" }
+    ]
+  },
+  {
+    "name": "paywall",
+    "description": "Exercise paywall presentation and purchase CTA",
+    "screenshot": "paywall",
+    "steps": [
+      { "action": "tap", "selector": "~openPaywallButton", "description": "Open paywall from home" },
+      { "action": "waitFor", "selector": "~paywallPlanList", "timeout": 15000, "description": "Wait for plans to render" },
+      { "action": "tap", "selector": "~paywallPlanAnnual", "description": "Select annual plan" },
+      { "action": "tap", "selector": "~paywallPurchaseButton", "description": "Tap purchase CTA", "continueOnError": true },
+      { "action": "tap", "selector": "~paywallDismissButton", "description": "Dismiss paywall" }
+    ]
+  },
+  {
+    "name": "download",
+    "description": "Toggle offline download state for the first content card",
+    "screenshot": "download-toggle",
+    "steps": [
+      { "action": "tap", "selector": "~homeCard-0", "description": "Open first content card" },
+      { "action": "waitFor", "selector": "~contentDetailSheet", "timeout": 15000, "description": "Wait for content sheet" },
+      { "action": "tap", "selector": "~downloadToggle", "description": "Toggle download" },
+      { "action": "sleep", "ms": 2000, "description": "Allow state to settle" },
+      { "action": "tap", "selector": "~closeSheetButton", "description": "Close content sheet" }
+    ]
+  },
+  {
+    "name": "notifications",
+    "description": "Preview notification payload and dismiss",
+    "screenshot": "notification-preview",
+    "steps": [
+      { "action": "tap", "selector": "~openNotificationPreview", "description": "Open notification preview" },
+      { "action": "waitFor", "selector": "~notificationPreviewSheet", "timeout": 10000, "description": "Ensure preview is visible" },
+      { "action": "tap", "selector": "~notificationDismiss", "description": "Dismiss preview" }
+    ]
+  },
+  {
+    "name": "profile",
+    "description": "Update profile display name and toggle feature flag",
+    "screenshot": "profile",
+    "steps": [
+      { "action": "tap", "selector": "~openProfileButton", "description": "Open profile modal" },
+      { "action": "waitFor", "selector": "~profileSheet", "timeout": 15000, "description": "Wait for profile sheet" },
+      { "action": "input", "selector": "~profileNameField", "value": "Clone Tester", "description": "Update display name" },
+      { "action": "tap", "selector": "~featureFlagToggle", "description": "Toggle feature flag" },
+      { "action": "tap", "selector": "~profileSaveButton", "description": "Save profile" }
     ]
   }
 ]

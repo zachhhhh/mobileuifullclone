@@ -47,11 +47,16 @@ root = Path(sys.argv[1])
 if not root.exists():
     sys.exit(1)
 
-files = sorted(root.glob('*.ipa'), key=lambda p: p.stat().st_mtime, reverse=True)
-if not files:
+candidates = sorted(
+    [p for p in root.rglob('*.ipa') if p.is_file()],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+
+if not candidates:
     sys.exit(1)
 
-print(files[0])
+print(candidates[0])
 PY
 ) || true
 if [[ -z "$IPA_PATH" ]]; then

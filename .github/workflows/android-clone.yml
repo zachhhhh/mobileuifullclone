@@ -1,0 +1,60 @@
+name: Android Clone Pipeline
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        required: false
+        type: string
+      apk_url:
+        required: false
+        type: string
+      release_notes:
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare sample APK/AAB
+        env:
+          SOURCE_VERSION: ${{ inputs.version || '' }}
+          TEST_APK_URL: ${{ inputs.apk_url || '' }}
+          SOURCE_RELEASE_NOTES: ${{ inputs.release_notes || '' }}
+        run: |
+          bash .automation/scripts/android/download_latest.sh
+          echo "Using package at $ANDROID_BINARY_PATH"
+
+      - name: Build orchestrator image
+        run: docker compose -f .automation/docker-compose.yml build orchestrator
+
+      - name: Run automation pipeline (Android)
+        env:
+          ANDROID_BINARY_PATH: ${{ env.ANDROID_BINARY_PATH }}
+          ANDROID_BINARY_VERSION: ${{ env.ANDROID_BINARY_VERSION || github.run_id }}
+          ANDROID_RELEASE_NOTES: ${{ env.ANDROID_RELEASE_NOTES || 'Automation smoke test build' }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ANDROID_BINARY_PATH:-}" ]]; then
+            echo "ANDROID_BINARY_PATH not set" >&2
+            exit 1
+          fi
+          docker compose -f .automation/docker-compose.yml run --rm \
+            -e BINARY_VERSION="$ANDROID_BINARY_VERSION" \
+            -e BINARY_RELEASE_NOTES="$ANDROID_RELEASE_NOTES" \
+            orchestrator \
+            python3 automation/shared/run_pipeline.py android "$ANDROID_BINARY_PATH"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-clone-reports
+          path: |
+            reports/**
+            docs/release-summary.json
+          if-no-files-found: warn

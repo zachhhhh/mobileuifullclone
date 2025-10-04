@@ -8,7 +8,24 @@ UI_DIR="$CAPTURE_ROOT/ui"
 NETWORK_DIR="$CAPTURE_ROOT/network"
 ASSET_DIR="$CAPTURE_ROOT/assets"
 
-IPA_PATH=$(ls -t "$BINARY_DIR"/*.ipa 2>/dev/null | head -n1 || true)
+IPA_PATH=$(python3 - "$BINARY_DIR" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+if not root.exists():
+    sys.exit()
+
+candidates = sorted(
+    [p for p in root.rglob('*.ipa') if p.is_file()],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+
+if candidates:
+    print(candidates[0])
+PY
+) || true
 if [[ -z "$IPA_PATH" ]]; then
   echo "No IPA found in $BINARY_DIR" >&2
   exit 1

@@ -7,6 +7,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 
 from rich.console import Console
@@ -19,8 +20,30 @@ ANIMATION_EXTS = {".json", ".lottie"}
 
 def decode_package(app: Path, output: Path) -> Path:
     decoded_dir = output / "decoded"
-    subprocess.run(["apktool", "d", "-f", str(app), "-o", str(decoded_dir)], check=True)
-    return decoded_dir
+    try:
+        subprocess.run(
+            ["apktool", "d", "-f", str(app), "-o", str(decoded_dir)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return decoded_dir
+    except FileNotFoundError:
+        console.print("[yellow]apktool not available; falling back to zip extraction")
+    except subprocess.CalledProcessError as err:
+        console.print(f"[yellow]apktool failed ({err}); using zip fallback")
+
+    fallback_dir = output / "zip_fallback"
+    if fallback_dir.exists():
+        shutil.rmtree(fallback_dir)
+    fallback_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with zipfile.ZipFile(app) as archive:
+            archive.extractall(fallback_dir)
+    except zipfile.BadZipFile:
+        console.print(f"[red]Unable to decode {app}: not a valid APK/AAB")
+        return fallback_dir
+    return fallback_dir
 
 
 def collect_files(decoded_dir: Path, output: Path) -> dict:

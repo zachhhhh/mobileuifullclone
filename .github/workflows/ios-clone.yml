@@ -1,0 +1,60 @@
+name: iOS Clone Pipeline
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        required: false
+        type: string
+      ipa_url:
+        required: false
+        type: string
+      release_notes:
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare sample IPA
+        env:
+          SOURCE_VERSION: ${{ inputs.version || '' }}
+          TEST_IPA_URL: ${{ inputs.ipa_url || '' }}
+          SOURCE_RELEASE_NOTES: ${{ inputs.release_notes || '' }}
+        run: |
+          bash .automation/scripts/ios/download_latest.sh
+          echo "Using IPA at $IOS_BINARY_PATH"
+
+      - name: Build orchestrator image
+        run: docker compose -f .automation/docker-compose.yml build orchestrator
+
+      - name: Run automation pipeline (iOS)
+        env:
+          IOS_BINARY_PATH: ${{ env.IOS_BINARY_PATH }}
+          IOS_BINARY_VERSION: ${{ env.IOS_BINARY_VERSION || github.run_id }}
+          IOS_RELEASE_NOTES: ${{ env.IOS_RELEASE_NOTES || 'Automation smoke test build' }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${IOS_BINARY_PATH:-}" ]]; then
+            echo "IOS_BINARY_PATH not set" >&2
+            exit 1
+          fi
+          docker compose -f .automation/docker-compose.yml run --rm \
+            -e BINARY_VERSION="$IOS_BINARY_VERSION" \
+            -e BINARY_RELEASE_NOTES="$IOS_RELEASE_NOTES" \
+            orchestrator \
+            python3 automation/shared/run_pipeline.py ios "$IOS_BINARY_PATH"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-clone-reports
+          path: |
+            reports/**
+            docs/release-summary.json
+          if-no-files-found: warn

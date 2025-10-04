@@ -59,6 +59,23 @@ def generate_specs(workspace: Path) -> None:
     run(["python3", ".automation/scripts/shared/generate_specs.py"], cwd=workspace)
 
 
+def install_node_packages(platform: str, workspace: Path) -> None:
+    package_dir = workspace / "automation" / platform
+    package_json = package_dir / "package.json"
+    if not package_json.exists():
+        return
+    run(["npm", "install"], cwd=package_dir)
+
+
+def generate_design_tokens(platform: str, workspace: Path) -> None:
+    script_dir = workspace / "automation" / platform
+    script = script_dir / "generate_tokens.ts"
+    if not script.exists():
+        console.print(f"[yellow]Token generator missing for {platform}; skipping")
+        return
+    run(["npx", "ts-node", script.name], cwd=script_dir)
+
+
 def run_backend_sync(workspace: Path) -> None:
     if not (workspace / "backend").exists():
         console.print("[yellow]Backend directory missing; skipping sync tests")
@@ -100,6 +117,8 @@ def main() -> None:
     )
     binary_out = Path(archive_info["stored_path"])
 
+    install_node_packages(args.platform, workspace)
+
     with console.status("Running capture"):
         if args.platform == "ios":
             ios_capture(config, workspace)
@@ -127,6 +146,8 @@ def main() -> None:
         args.platform,
     ], cwd=workspace)
 
+    generate_design_tokens(args.platform, workspace)
+
     run([
         "python3",
         "automation/shared/sync_tokens.py",
@@ -143,6 +164,25 @@ def main() -> None:
         "python3",
         "automation/shared/release_report.py",
         args.platform,
+    ], cwd=workspace)
+
+    run([
+        "python3",
+        "automation/shared/diff_suite.py",
+        args.platform,
+        "--store-baseline",
+    ], cwd=workspace)
+
+    run([
+        "python3",
+        "automation/shared/report_aggregator.py",
+        "--platforms",
+        args.platform,
+    ], cwd=workspace)
+
+    run([
+        "python3",
+        "automation/shared/cross_platform_diff.py",
     ], cwd=workspace)
 
     generate_specs(workspace)

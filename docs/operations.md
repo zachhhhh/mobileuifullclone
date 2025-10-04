@@ -18,3 +18,13 @@ Example cron entry (runs daily 2am):
 ## Onboarding
 - Share `docs/product-alignment.md`, `docs/security-hardening.md`, and this runbook with new contributors
 - Provide access to remote simulator hosts and environment secrets vault
+
+## Environment Health
+- Run `python automation/shared/verify_toolchain.py ios` (or `android`) on each remote host daily to confirm Appium, mitmproxy, Xcode/Android SDK binaries remain available.
+- Monitor `web/storage/logs/*.log` to ensure automated uploads complete without runner connectivity errors.
+- Use the intake dashboard to re-run captures when needed (`POST /api/retry`), especially after updating Appium flows or simulator snapshots.
+- Review `reports/cross-platform-parity.md` each run to ensure iOS/Android outputs remain aligned.
+
+## Storage Hygiene
+- Uploaded binaries are temporary. Schedule `python automation/shared/cleanup_uploads.py --retention-days 1` to run hourly/daily so `web/storage/uploads` and `web/storage/logs` stay small.
+- Pass `--dry-run` when auditing what will be removed.

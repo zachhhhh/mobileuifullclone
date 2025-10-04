@@ -8,7 +8,24 @@ UI_DIR="$CAPTURE_ROOT/ui"
 NETWORK_DIR="$CAPTURE_ROOT/network"
 ASSET_DIR="$CAPTURE_ROOT/assets"
 
-APK_PATH=$(ls -t "$BINARY_DIR"/*.apk "$BINARY_DIR"/*.aab 2>/dev/null | head -n1 || true)
+APK_PATH=$(python3 - "$BINARY_DIR" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+if not root.exists():
+    sys.exit()
+
+candidates = []
+for pattern in ('*.apk', '*.aab'):
+    candidates.extend([p for p in root.rglob(pattern) if p.is_file()])
+
+candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+if candidates:
+    print(candidates[0])
+PY
+) || true
 if [[ -z "$APK_PATH" ]]; then
   echo "No APK/AAB found in $BINARY_DIR" >&2
   exit 1

@@ -8,20 +8,29 @@ This playbook defines how autonomous agents and scheduled jobs clone your owned 
 - Never emit signing keys, production secrets, or user data in logs or artefacts.
 - Tag every automation run with timestamp, app build, git commit, and tool versions for traceability.
 
+## Quickstart (Local End-to-End)
+1. Launch the intake portal: `cd web && AUTO_RUN_PIPELINE=true npm install && npm run dev`.
+2. Drop an IPA/APK/AAB and supply metadata. Uploads appear under `web/storage/uploads/<timestamp-app>/`; pipeline logs stream to `web/storage/logs/`.
+3. Monitor the dashboard (`Recent Runs`) to confirm pipeline status; click **View** for logs or **Retry** to re-run a capture.
+4. Remote runners execute capture jobs automatically. Generated assets land in `captures/`, `design-tokens/`, `reports/`, and regenerated client code under `client-ios/` / `client-android/`.
+5. Build artefacts: `cd client-ios && fastlane clone_build`, `cd client-android && ./gradlew cloneBuild`.
+6. Clean up temporary uploads regularly via `python automation/shared/cleanup_uploads.py --retention-days 1`.
+
 ## Automation Infrastructure
-- **Orchestrator**: GitHub Actions (or equivalent CI) with reusable composite actions per task.
-- **Job Runner**: macOS runners for iOS capture/build, Linux runners for backend/tests, optional self-hosted Android/Windows if required.
-- **Artefact Store**: Git LFS + S3/GCS bucket `artifacts/` for large binaries, captures, reports.
-- **Configuration**: `.automation/config.yaml` tracks bundle IDs, proxy settings, simulator/emulator profiles, cron schedules, Slack/webhook targets.
-- **Secrets Management**: CI secrets vault providing App Store/Play Console tokens, proxy creds, signing certs, encrypted environment files.
+- **Intake Portal**: Next.js app in `web/` runs locally or on an internal host. Users drop IPA/APK/AAB builds and supply metadata. Uploads land in `web/storage/uploads/<timestamp-app>/` with a `metadata.json` snapshot.
+- **Local Orchestrator**: Docker Compose (`.automation/docker-compose.yml`) launches the automation container. By default the intake API immediately executes `automation/shared/run_pipeline.py` for the detected platform, piping logs to `web/storage/logs/`.
+- **Remote Job Runners**: macOS hosts for iOS capture/build, Linux/macOS for Android and backend/tests. Configure SSH details in `.automation/config.yaml` so Appium + mitmproxy capture stages can run without manual intervention.
+- **Artefact Store**: Repository directories (`captures/`, `design-tokens/`, `reports/`, `fixtures/`, `client-ios/`, `client-android/`) hold generated outputs. Optionally mirror to Git LFS or S3/GCS for long-term retention.
+- **Configuration**: `.automation/config.yaml` records bundle IDs, simulator/emulator profiles, remote host credentials, coverage thresholds, and notification targets.
+- **Secrets Management**: For distributed deployments, use a secrets vault (e.g., GitHub Actions secrets, HashiCorp Vault) to provide App Store/Play Console tokens, proxy credentials, signing assets, and environment files. Local runs rely on developer-provided environment variables.
 
 ## Shared Automated Pipeline
-1. **Version Ingest Job**
-   - Trigger: cron + manual dispatch.
-   - Steps: query App Store/Play APIs, download latest IPA/AAB via fastlane supply/deliver, checksum binary, push to `captures/<platform>/binaries/<version>`. Create git tag `source/<platform>/<version>`.
+1. **Upload & Ingest Job**
+   - Trigger: user drops IPA/APK/AAB through intake portal (or scheduled ingest script).
+   - Steps: archive the binary under `captures/<platform>/binaries/<version>/`, checksum, and emit run metadata. Optional scheduled scripts can still pull from App Store/Play APIs when credentials are provided.
 2. **Environment Provision Job**
-   - Uses macOS runner setup script to install/verify Xcode, simulators, Node, Python, Appium, mitmproxy.
-   - Generates cache keys to reuse simulator images and npm/pip deps.
+   - Remote runners execute `.automation/scripts/*/bootstrap_*.sh` to install/verify Xcode simulators, Android AVDs, Node, Python, Appium, mitmproxy.
+   - Run `python automation/shared/verify_toolchain.py ios|android` daily to surface missing CLI dependencies.
 3. **Appium Walkthrough Job**
    - Spins up simulator/emulator defined in config.
   - Launches Appium server (Node) with walkthrough scripts (`automation/<platform>/walkthrough.mjs`).
@@ -48,17 +57,21 @@ This playbook defines how autonomous agents and scheduled jobs clone your owned 
 9. **Performance & Security Scan Job**
    - Profiles startup / frame pacing (Xcode Instruments CLI, Android Profiler headless), compares to baseline thresholds.
    - Verifies certificate pinning, secure storage, analytics event coverage.
-10. **Report & Notification Job**
+10. **Cross-Platform Parity Job**
+   - Compares iOS and Android artefacts (tokens, layouts, assets) using `automation/shared/cross_platform_diff.py`.
+   - Publishes unified report (`reports/cross-platform-parity.md`) highlighting inconsistencies requiring design or implementation alignment.
+11. **Report & Notification Job**
    - Consolidates results into `reports/daily-summary.md` including version changes, diffs, regressions, action items.
-   - Posts summary to Slack/email with links to artefacts.
+   - Posts summary to Slack/email with links to artefacts (optional; local runs rely on log review in `web/storage/logs/`).
 
 ### Detailed Workflow Implementation Steps
 - **Preflight Setup**
   1. Verify licensing scope and confirm target app bundle IDs/APK package names with legal/partner teams; record approvals in `docs/product-alignment.md`.
-  2. Populate `.automation/config.yaml` with bundle IDs, binary sources, simulator/emulator profiles, secrets references, and notification targets.
-  3. Provision artefact storage buckets + Git LFS; create required folders (`captures/`, `reports/`, `design-tokens/`) and enable lifecycle policies.
-  4. Register CI secrets (store tokens, SSH credentials, Slack webhooks) and grant least-privilege access; test retrieval with a dry-run workflow dispatch.
-  5. Pin orchestrator/tool container versions in `.automation/docker-compose.yml` and document them under `docs/toolchain-versions.md` for traceability.
+  2. Populate `.automation/config.yaml` with bundle IDs, simulator/emulator profiles, remote runner SSH credentials, coverage thresholds, and notification targets.
+  3. Stand up remote runners using `.automation/scripts/*/bootstrap_*.sh`; validate toolchains with `python automation/shared/verify_toolchain.py ios` / `android`.
+  4. Ensure repository directories (`captures/`, `design-tokens/`, `reports/`, `fixtures/`, `client-*`) exist and are writable by the automation container.
+  5. Pin orchestrator/tool container versions in `.automation/docker-compose.yml`; document them in `docs/toolchain-versions.md` for traceability.
+  6. (Optional) Configure App Store Connect and Play Developer API credentials plus secrets vault integration when running in CI.
 
 - **Version Ingest Job**
   1. Configure App Store Connect and Play Developer API credentials in the CI secret store; populate `.automation/scripts/*/download_latest.sh` env vars (`ASC_KEY_ID`, `PLAY_SERVICE_ACCOUNT`).
@@ -155,8 +168,7 @@ This playbook defines how autonomous agents and scheduled jobs clone your owned 
 
 ### Automation Notes
 - Jobs run sequentially via workflow `ios-clone.yml`; each stage uploads artefacts and sets output variables for downstream jobs.
-- Failures auto-create GitHub issues with logs and next steps.
-- Manual approval gates only for deploying backend changes to production clones.
+- Failures auto-create GitHub issues with logs and next steps; rely on generated reports for review rather than manual gates.
 
 ### Step-by-Step Implementation
 1. Validate macOS runner readiness by executing `.automation/scripts/ios/bootstrap_simulator.sh --validate` and confirming required device profiles exist.
@@ -253,10 +265,11 @@ This playbook defines how autonomous agents and scheduled jobs clone your owned 
 ```
 
 ## Next Actions for Agents
-1. Implement `.automation/config.yaml` with bundle IDs, device profiles, notification webhooks.
+1. Implement `.automation/config.yaml` with bundle IDs, device profiles, notification targets.
 2. Commit initial CI workflows (`ios-clone.yml`, `android-clone.yml`) referencing scripts above.
 3. Develop the iOS Appium walkthrough suite and mitmproxy add-on; run pipeline dry-run to populate artefacts.
 4. Mirror automation for Android once iOS pipeline passes and artefacts validate.
+5. Add cross-platform parity report generation (`automation/shared/cross_platform_diff.py`) and fold results into daily summaries.
 
 ## Automation Container Usage
 - Build and start the infrastructure: `docker compose -f .automation/docker-compose.yml up -d orchestrator mitmproxy`
